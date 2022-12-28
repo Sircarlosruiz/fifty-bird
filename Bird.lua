@@ -11,7 +11,7 @@ function Bird:init()
     self.y = VIRTUAL_HEIGHT / 2 - (self.height / 2)
 end
 
-function Bird:render()
+function Bird:update()
     self.dy = self.dy + GRAVITY * dt
 
     self.y = self.y + self.dy
