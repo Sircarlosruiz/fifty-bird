@@ -6,6 +6,8 @@ require 'Bird'
 
 require 'Pipe'
 
+require 'PipePair'
+
 WINDOW_WIDTH = 1280
 WINDOW_HEIGHT = 720
 
@@ -24,11 +26,17 @@ local GROUND_SCROLL_SPEED = 60
 
 local BACKGROUND_LOOPING_POINT = 413
 
+local GROUND_LOOPING_POINT = 514
+
 local bird = Bird()
 
-local pipes = {}
+local pipePairs = {}
 
 local spawnTimer = 0
+
+-- local lastY = -PIPE_HEIGHT + math.random(80) + 20
+
+local scrolling = true
 
 function love.load()
     love.graphics.setDefaultFilter('nearest', 'nearest')
@@ -65,29 +73,44 @@ function love.keyboard.wasPressed(key)
 end
 
 function love.update(dt)
-    backgroundScroll = (backgroundScroll + BACKGROUND_SCROLL_SPEED * dt) % BACKGROUND_LOOPING_POINT
+    if scrolling then
+        backgroundScroll = (backgroundScroll + BACKGROUND_SCROLL_SPEED * dt) % BACKGROUND_LOOPING_POINT
 
-    groundScroll = (groundScroll + GROUND_SCROLL_SPEED * dt) % VIRTUAL_WIDTH
+        groundScroll = (groundScroll + GROUND_SCROLL_SPEED * dt) % GROUND_LOOPING_POINT
 
-    bird:update(dt)
+        spawnTimer = spawnTimer * dt
 
-    
-    if spawnTimer > 2 then
-        table.insert(pipes, Pipe())
-        print('Se agrego nueva tuberia')
-        spawnTimer = 0
-    end
-    
-    bird:update(dt)
-    
-    for k, pipe in pairs(pipes) do
-        pipe:update(dt)
-        
-        if pipe.x < -pipe.width then
-            table.remove(pipes, k)
+        if spawnTimer > 2 then
+            local y = math.max(-PIPE_HEIGHT + 10, math.min(lastY + math.random(-20, 20), VIRTUAL_HEIGHT - 90 - PIPE_HEIGHT))
+
+            lastY = y
+
+            table.insert(pipePairs, PipePair(y))
+            spawnTimer = 0
+        end
+
+        bird:update(dt)
+
+        for k, pair in pairs(pipePairs) do
+            pair:update(dt)
+
+            for l, pipe in pair(pair.pipes) do
+                if bird:collides(pipe) then
+                    scrolling = false
+                end
+            end
+
+            if pair.x < -PIPE_WIDTH then
+                pair.remove = true
+            end
+        end
+
+        for k, pair in pairs(pipePairs) do
+            if pair.remove then
+                table.remove(pipePairs, k)
+            end
         end
     end
-
 
     love.keyboard.keysPressed = {}
 end
@@ -97,7 +120,7 @@ function love.draw()
 
     love.graphics.draw(background, -backgroundScroll, 0)
 
-    for k, pipe in pairs(pipes) do
+    for k, pipe in pairs(pipePairs) do
         pipe:render()
     end
 
